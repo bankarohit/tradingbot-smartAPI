@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+smartapi-python
+google-cloud-storage
+redis
+python-dotenv
+logzero
+websocket-client
