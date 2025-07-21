@@ -138,3 +138,102 @@ def test_login_returns_error_on_smartconnect_failure(monkeypatch, caplog):
 
     assert resp == {"error": "connect boom"}
     assert any("Failed to login to SmartAPI" in r.message for r in caplog.records)
+
+
+def test_default_update_handler_buy_and_sell(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    calls = []
+    monkeypatch.setattr('smartapi_wrapper.update_position', lambda sym, qty: calls.append((sym, qty)))
+
+    buy_msg = '{"tradingsymbol":"SBIN-EQ","quantity":"2","transactiontype":"BUY"}'
+    sell_msg = '{"tradingsymbol":"SBIN-EQ","quantity":"1","transactiontype":"SELL"}'
+
+    wrapper.default_update_handler(buy_msg)
+    wrapper.default_update_handler(sell_msg)
+
+    assert calls == [("SBIN-EQ", 2), ("SBIN-EQ", -1)]
+
+
+def test_default_update_handler_error_logged(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr('smartapi_wrapper.update_position', lambda *a, **k: 1)
+
+    with caplog.at_level(logging.ERROR):
+        wrapper.default_update_handler("not json")
+
+    assert any("Failed to process order update" in r.message for r in caplog.records)
+
+
+class DummyBlob:
+    def __init__(self):
+        self.data = None
+    def upload_from_string(self, data):
+        self.data = data
+    def download_as_bytes(self):
+        return self.data.encode()
+    def exists(self):
+        return self.data is not None
+
+
+class DummyBucket:
+    def __init__(self):
+        self.blob_obj = DummyBlob()
+    def blob(self, name):
+        return self.blob_obj
+
+
+class DummyClient:
+    def __init__(self):
+        self.bucket_obj = DummyBucket()
+    def bucket(self, name):
+        return self.bucket_obj
+
+
+def test_save_and_load_token(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.gcs_bucket_name = 'b'
+    client = DummyClient()
+    monkeypatch.setattr(smartapi_wrapper.storage, 'Client', lambda: client)
+
+    token = {'data': {'jwtToken': 't'}}
+    wrapper._save_token(token)
+    loaded = wrapper._load_token()
+    assert loaded == token
+
+
+def test_logout_logs_error(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    class BadSmart:
+        def logout(self):
+            raise Exception('fail')
+    wrapper.smart = BadSmart()
+    with caplog.at_level(logging.ERROR):
+        wrapper.logout()
+    assert any('Logout failed' in r.message for r in caplog.records)
+    assert wrapper.session is None
+
+
+class DummyThread:
+    def __init__(self, target=None, args=(), daemon=None):
+        self.target = target
+        self.args = args
+        self.daemon = daemon
+        self.started = False
+    def start(self):
+        self.started = True
+        if self.target:
+            self.target(*self.args)
+    def is_alive(self):
+        return self.started
+
+
+def test_start_websocket_starts_thread(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.smart = object()
+    wrapper.session = {'data': {'feedToken': 'f', 'jwtToken': 'j'}}
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+    called = {}
+    monkeypatch.setattr(wrapper, '_run_ws', lambda cb: called.setdefault('run', True))
+    wrapper.start_websocket(lambda x: None)
+    assert called.get('run')
+    assert isinstance(wrapper.ws_thread, DummyThread) and wrapper.ws_thread.started
