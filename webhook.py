@@ -18,5 +18,9 @@ async def tradingview_webhook(payload: Request):
 
     wrapper = get_wrapper()
     order_params = from_tradingview(data)
-    resp = wrapper.place_order(order_params)
+    try:
+        resp = wrapper.place_order(order_params)
+    except Exception as exc:
+        logger.exception("Failed to place order: %s", exc)
+        raise HTTPException(status_code=502, detail=str(exc))
     return {"status": "order_sent", "response": resp}
