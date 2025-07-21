@@ -20,6 +20,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Dependencies pin `httpx<0.25` to remain compatible with `starlette.TestClient`.
+
 ## Configuration
 
 Copy `.env.example` to `.env` and set the following environment variables:
