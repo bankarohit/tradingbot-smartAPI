@@ -8,4 +8,4 @@ python-dotenv
 logzero
 websocket-client
 pytest
-httpx
+httpx<0.25
