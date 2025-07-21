@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Set the following environment variables:
+Copy `.env.example` to `.env` and set the following environment variables:
 
 - `SMARTAPI_API_KEY`
 - `SMARTAPI_CLIENT_CODE`
