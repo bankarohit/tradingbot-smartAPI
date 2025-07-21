@@ -103,13 +103,12 @@ Ensure the Cloud Run service account can access the GCS bucket storing the Smart
 
 ## Testing
 
-No automated tests are included. You can verify the environment with:
+Install the dependencies and run the test suite with `pytest`:
 
 ```bash
-python -m compileall .
+pip install -r requirements.txt
+pytest
 ```
-
-If you add tests, run them using `pytest`.
 
 ## Running the WebSocket Listener Manually
 
