@@ -3,6 +3,7 @@ import pytest
 
 import smartapi_wrapper
 
+
 class DummySmart:
     def __init__(self, *args, **kwargs):
         self.session_set = None
@@ -54,7 +55,9 @@ def test_login_generates_token(monkeypatch):
 def test_place_order_triggers_login(monkeypatch):
     monkeypatch.setattr(smartapi_wrapper, "SmartConnect", DummySmart)
     wrapper = smartapi_wrapper.SmartAPIWrapper()
-    monkeypatch.setattr(wrapper, "_load_token", lambda: {"data": {"jwtToken": "t", "feedToken": "f"}})
+    monkeypatch.setattr(
+        wrapper, "_load_token", lambda: {"data": {"jwtToken": "t", "feedToken": "f"}}
+    )
     monkeypatch.setattr(wrapper, "_save_token", lambda t: None)
 
     resp = wrapper.place_order({"key": "val"})
@@ -83,3 +86,55 @@ def test_place_order_logs_and_returns_error(monkeypatch, caplog):
 
     assert resp == {"error": "boom"}
     assert any("Failed to place order" in r.message for r in caplog.records)
+
+
+def test_login_logs_load_token_failure(monkeypatch, caplog):
+    monkeypatch.setattr(smartapi_wrapper, "SmartConnect", DummySmart)
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+
+    def fail_load():
+        raise Exception("gcs boom")
+
+    monkeypatch.setattr(wrapper, "_load_token", fail_load)
+    monkeypatch.setattr(wrapper, "_save_token", lambda t: None)
+
+    with caplog.at_level(logging.ERROR):
+        session = wrapper.login()
+
+    assert wrapper.smart.generated
+    assert session.get("data")
+    assert any("Failed to load token" in r.message for r in caplog.records)
+
+
+def test_login_logs_save_token_failure(monkeypatch, caplog):
+    monkeypatch.setattr(smartapi_wrapper, "SmartConnect", DummySmart)
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(wrapper, "_load_token", lambda: None)
+
+    def fail_save(token):
+        raise Exception("gcs save boom")
+
+    monkeypatch.setattr(wrapper, "_save_token", fail_save)
+
+    with caplog.at_level(logging.ERROR):
+        session = wrapper.login()
+
+    assert wrapper.smart.generated
+    assert session.get("data")
+    assert any("Failed to save token" in r.message for r in caplog.records)
+
+
+class FailingSmart:
+    def __init__(self, *args, **kwargs):
+        raise Exception("connect boom")
+
+
+def test_login_returns_error_on_smartconnect_failure(monkeypatch, caplog):
+    monkeypatch.setattr(smartapi_wrapper, "SmartConnect", FailingSmart)
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+
+    with caplog.at_level(logging.ERROR):
+        resp = wrapper.login()
+
+    assert resp == {"error": "connect boom"}
+    assert any("Failed to login to SmartAPI" in r.message for r in caplog.records)

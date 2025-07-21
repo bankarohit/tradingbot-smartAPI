@@ -51,18 +51,35 @@ class SmartAPIWrapper:
 
     # Authentication
     def login(self) -> Dict[str, Any]:
-        self.smart = SmartConnect(api_key=self.api_key)
-        token = self._load_token()
-        if token:
-            self.smart.set_session(token["data"]["jwtToken"])
-            self.session = token
-            logger.info("Loaded SmartAPI session from storage")
-            return token
-        session = self.smart.generateSession(self.client_code, self.password, self.totp)
-        self.session = session
-        self._save_token(session)
-        logger.info("Generated new SmartAPI session")
-        return session
+        """Authenticate with SmartAPI and persist the session token."""
+        try:
+            self.smart = SmartConnect(api_key=self.api_key)
+
+            try:
+                token = self._load_token()
+            except Exception as exc:  # GCS errors
+                logger.exception("Failed to load token: %s", exc)
+                token = None
+
+            if token:
+                self.smart.set_session(token["data"]["jwtToken"])
+                self.session = token
+                logger.info("Loaded SmartAPI session from storage")
+                return token
+
+            session = self.smart.generateSession(
+                self.client_code, self.password, self.totp
+            )
+            self.session = session
+            try:
+                self._save_token(session)
+            except Exception as exc:  # GCS errors
+                logger.exception("Failed to save token: %s", exc)
+            logger.info("Generated new SmartAPI session")
+            return session
+        except Exception as exc:
+            logger.exception("Failed to login to SmartAPI: %s", exc)
+            return {"error": str(exc)}
 
     def logout(self) -> None:
         if self.smart:
