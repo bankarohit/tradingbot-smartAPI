@@ -76,7 +76,11 @@ class SmartAPIWrapper:
     def place_order(self, params: Dict[str, Any]) -> Any:
         if not self.smart or not self.session:
             self.login()
-        resp = self.smart.placeOrder(params)
+        try:
+            resp = self.smart.placeOrder(params)
+        except Exception as exc:
+            logger.exception("Failed to place order: %s", exc)
+            return {"error": str(exc)}
         logger.info("Order response: %s", resp)
         return resp
 

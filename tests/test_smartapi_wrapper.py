@@ -1,3 +1,4 @@
+import logging
 import pytest
 
 import smartapi_wrapper
@@ -60,3 +61,25 @@ def test_place_order_triggers_login(monkeypatch):
     assert wrapper.session is not None  # login was called
     assert wrapper.smart.ordered == {"key": "val"}
     assert resp == {"order": "ok"}
+
+
+def test_place_order_logs_and_returns_error(monkeypatch, caplog):
+    monkeypatch.setattr(smartapi_wrapper, "SmartConnect", DummySmart)
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(
+        wrapper,
+        "_load_token",
+        lambda: {"data": {"jwtToken": "t", "feedToken": "f"}},
+    )
+    monkeypatch.setattr(wrapper, "_save_token", lambda t: None)
+
+    def raise_order(self, params):
+        raise Exception("boom")
+
+    monkeypatch.setattr(DummySmart, "placeOrder", raise_order)
+
+    with caplog.at_level(logging.ERROR):
+        resp = wrapper.place_order({"k": "v"})
+
+    assert resp == {"error": "boom"}
+    assert any("Failed to place order" in r.message for r in caplog.records)
