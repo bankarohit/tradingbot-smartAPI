@@ -1,15 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+import logging
 
 from smartapi_wrapper import get_wrapper
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/login")
 async def login():
     wrapper = get_wrapper()
     session = wrapper.login()
-    return {"status": "success", "data": session.get("data")}
+    if "error" in session:
+        logger.error("Login failed: %s", session["error"])
+        raise HTTPException(status_code=502, detail=session["error"])
+    return {"status": "success", "data": session["data"]}
 
 
 @router.post("/logout")
