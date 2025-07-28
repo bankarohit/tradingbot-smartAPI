@@ -87,6 +87,7 @@ class SmartAPIWrapper:
                 self.smart.logout()
             except Exception as exc:
                 logger.error("Logout failed: %s", exc)
+        self.stop_websocket()
         self.session = None
 
     # Orders
@@ -115,6 +116,7 @@ class SmartAPIWrapper:
         jwt = self.session["data"]["jwtToken"]
         ws = SmartWebSocketOrderUpdate(jwt, self.api_key, self.client_code, token)
         ws.on_message = lambda wsapp, msg: on_update(msg)
+        self.websocket = ws
         ws.connect()
 
     def start_websocket(self, on_update: Callable[[str], None]) -> None:
@@ -124,6 +126,14 @@ class SmartAPIWrapper:
             return
         self.ws_thread = Thread(target=self._run_ws, args=(on_update,), daemon=True)
         self.ws_thread.start()
+
+    def stop_websocket(self) -> None:
+        if self.websocket:
+            try:
+                self.websocket.close_connection()
+            except Exception as exc:
+                logger.error("Failed to close WebSocket: %s", exc)
+        self.websocket = None
 
     def default_update_handler(self, message: str) -> None:
         """Handle order update messages and track positions in Redis."""
