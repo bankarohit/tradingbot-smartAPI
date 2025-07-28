@@ -315,3 +315,29 @@ def test_start_websocket_login_failure(monkeypatch, caplog):
     assert 'run' not in called
     assert wrapper.ws_thread is None
     assert any('Login failed' in r.message for r in caplog.records)
+
+
+def test_run_ws_failure_logged(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.smart = object()
+    wrapper.session = {'data': {'feedToken': 'f', 'jwtToken': 'j'}}
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+
+    class FailWS:
+        def __init__(self, *a, **k):
+            pass
+
+        def connect(self):
+            raise Exception('boom')
+
+        def close_connection(self):
+            pass
+
+    monkeypatch.setattr(smartapi_wrapper, 'SmartWebSocketOrderUpdate', FailWS)
+
+    with caplog.at_level(logging.ERROR):
+        wrapper.start_websocket(lambda x: None)
+
+    assert any('WebSocket connection failed' in r.message for r in caplog.records)
+    assert wrapper.websocket is None
+    assert wrapper.ws_thread is None

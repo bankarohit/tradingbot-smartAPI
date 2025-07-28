@@ -112,12 +112,19 @@ class SmartAPIWrapper:
 
     # Websocket
     def _run_ws(self, on_update: Callable[[str], None]) -> None:
-        token = self.session["data"]["feedToken"]
-        jwt = self.session["data"]["jwtToken"]
-        ws = SmartWebSocketOrderUpdate(jwt, self.api_key, self.client_code, token)
-        ws.on_message = lambda wsapp, msg: on_update(msg)
-        self.websocket = ws
-        ws.connect()
+        try:
+            token = self.session["data"]["feedToken"]
+            jwt = self.session["data"]["jwtToken"]
+            ws = SmartWebSocketOrderUpdate(
+                jwt, self.api_key, self.client_code, token
+            )
+            ws.on_message = lambda wsapp, msg: on_update(msg)
+            self.websocket = ws
+            ws.connect()
+        except Exception as exc:
+            logger.exception("WebSocket connection failed: %s", exc)
+            self.websocket = None
+            self.ws_thread = None
 
     def start_websocket(self, on_update: Callable[[str], None]) -> None:
         if not self.smart or not self.session:
