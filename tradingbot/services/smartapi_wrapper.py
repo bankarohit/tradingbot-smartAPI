@@ -134,6 +134,7 @@ class SmartAPIWrapper:
             except Exception as exc:
                 logger.error("Failed to close WebSocket: %s", exc)
         self.websocket = None
+        self.ws_thread = None
 
     def default_update_handler(self, message: str) -> None:
         """Handle order update messages and track positions in Redis."""

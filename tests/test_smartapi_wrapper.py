@@ -272,3 +272,31 @@ def test_start_websocket_sets_websocket(monkeypatch):
 
     assert isinstance(wrapper.websocket, DummyWS)
     assert wrapper.websocket.connected
+
+
+def test_stop_websocket_clears_state(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.smart = object()
+    wrapper.session = {'data': {'feedToken': 'f', 'jwtToken': 'j'}}
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+
+    class DummyWS:
+        def __init__(self, *args, **kwargs):
+            self.closed = False
+        def connect(self):
+            pass
+        def close_connection(self):
+            self.closed = True
+
+    monkeypatch.setattr(smartapi_wrapper, 'SmartWebSocketOrderUpdate', DummyWS)
+
+    wrapper.start_websocket(lambda x: None)
+
+    ws = wrapper.websocket
+    assert wrapper.ws_thread is not None
+
+    wrapper.stop_websocket()
+
+    assert ws.closed
+    assert wrapper.websocket is None
+    assert wrapper.ws_thread is None
