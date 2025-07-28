@@ -55,3 +55,23 @@ def test_login_error_returns_502(failing_auth_client):
     resp = failing_auth_client.post("/auth/login")
     assert resp.status_code == 502
     assert resp.json()["detail"] == "boom"
+
+class ExceptionWrapper(DummyWrapper):
+    def login(self):
+        raise Exception("explode")
+
+
+@pytest.fixture
+def raising_auth_client(monkeypatch):
+    wrapper = ExceptionWrapper()
+    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
+    from tradingbot.routers import auth
+    monkeypatch.setattr(auth, "get_wrapper", lambda: wrapper)
+    monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
+    app = main.app
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def test_login_exception_returns_500(raising_auth_client):
+    resp = raising_auth_client.post("/auth/login")
+    assert resp.status_code == 500

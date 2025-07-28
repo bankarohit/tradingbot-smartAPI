@@ -73,6 +73,20 @@ def error_client(monkeypatch):
     return TestClient(app)
 
 
+@pytest.fixture
+def exception_client(monkeypatch):
+    wrapper = DummyWrapper()
+    monkeypatch.setattr(
+        "tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper
+    )
+    monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
+    from tradingbot.routers import webhook
+
+    monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
+    app = main.app
+    return TestClient(app, raise_server_exceptions=False)
+
+
 def test_webhook_invalid_json(client):
     response = client.post(
         "/webhook", data="notjson", headers={"Content-Type": "application/json"}
@@ -115,3 +129,14 @@ def test_webhook_order_error_dict(error_client, caplog):
         response = error_client.post("/webhook", json=payload)
     assert response.status_code == 502
     assert any("Order error" in r.message for r in caplog.records)
+
+class MissingSymbolWrapper(DummyWrapper):
+    def place_order(self, params):
+        return super().place_order(params)
+
+
+def test_webhook_missing_symbol(exception_client):
+    response = exception_client.post("/webhook", json={"qty": 1})
+    # from_tradingview will raise KeyError leading to 500 response
+    assert response.status_code == 500
+

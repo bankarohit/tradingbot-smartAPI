@@ -212,6 +212,8 @@ def test_save_and_load_token(monkeypatch):
     assert loaded == token
 
 
+
+
 def test_logout_logs_error(monkeypatch, caplog):
     wrapper = smartapi_wrapper.SmartAPIWrapper()
     class BadSmart:
@@ -341,3 +343,91 @@ def test_run_ws_failure_logged(monkeypatch, caplog):
     assert any('WebSocket connection failed' in r.message for r in caplog.records)
     assert wrapper.websocket is None
     assert wrapper.ws_thread is None
+
+def test_save_and_load_token_no_bucket(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.gcs_bucket_name = None
+    monkeypatch.setattr(wrapper, "_bucket", lambda: (_ for _ in ()).throw(AssertionError()))
+    wrapper._save_token({"data": {"jwtToken": "t"}})  # should no-op
+    assert wrapper._load_token() is None
+
+
+def test_place_order_login_missing_session(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(wrapper, "login", lambda: {"ok": True})  # does not set session
+    with caplog.at_level(logging.ERROR):
+        resp = wrapper.place_order({"k": "v"})
+    assert resp == {"error": "login failed"}
+    assert any("SmartAPI session not established" in r.message for r in caplog.records)
+
+
+class SuccessWS:
+    def __init__(self, *a, **k):
+        self.connected = False
+        self.on_message = None
+    def connect(self):
+        self.connected = True
+        if self.on_message:
+            self.on_message(None, '{"msg":1}')
+    def close_connection(self):
+        pass
+
+
+def test_run_ws_success(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.session = {"data": {"feedToken": "f", "jwtToken": "j"}}
+    messages = []
+    monkeypatch.setattr(smartapi_wrapper, "SmartWebSocketOrderUpdate", SuccessWS)
+    wrapper._run_ws(lambda m: messages.append(m))
+    assert isinstance(wrapper.websocket, SuccessWS)
+    assert wrapper.websocket.connected
+    assert messages == ["{\"msg\":1}"]
+
+
+def test_stop_websocket_logs_on_error(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    class BadWS:
+        def close_connection(self):
+            raise Exception("close fail")
+    wrapper.websocket = BadWS()
+    with caplog.at_level(logging.ERROR):
+        wrapper.stop_websocket()
+    assert any("Failed to close WebSocket" in r.message for r in caplog.records)
+    assert wrapper.websocket is None
+    assert wrapper.ws_thread is None
+
+
+def test_get_wrapper_singleton():
+    smartapi_wrapper._wrapper = None
+    w1 = smartapi_wrapper.get_wrapper()
+    w2 = smartapi_wrapper.get_wrapper()
+    assert w1 is w2
+
+
+def test_load_token_not_found(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.gcs_bucket_name = 'b'
+    client = DummyClient()
+    monkeypatch.setattr(smartapi_wrapper.storage, 'Client', lambda: client)
+    assert wrapper._load_token() is None
+
+
+def test_start_websocket_no_session(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+    monkeypatch.setattr(wrapper, 'login', lambda: {'ok': True})
+    with caplog.at_level(logging.ERROR):
+        wrapper.start_websocket(lambda x: None)
+    assert wrapper.ws_thread is None
+    assert any('SmartAPI session not established' in r.message for r in caplog.records)
+
+
+def test_start_websocket_thread_alive(monkeypatch):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    wrapper.smart = object()
+    wrapper.session = {'data': {'feedToken': 'f', 'jwtToken': 'j'}}
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+    wrapper.start_websocket(lambda x: None)
+    thread = wrapper.ws_thread
+    wrapper.start_websocket(lambda x: None)
+    assert wrapper.ws_thread is thread
