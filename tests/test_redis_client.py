@@ -1,4 +1,4 @@
-import redis_client
+from tradingbot.services import redis_client
 
 class DummyRedis:
     def __init__(self, *args, **kwargs):

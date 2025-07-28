@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-import main
+import tradingbot.main as main
 
 class DummyWrapper:
     def __init__(self):
@@ -20,8 +20,8 @@ class FailingWrapper(DummyWrapper):
 @pytest.fixture
 def auth_client(monkeypatch):
     wrapper = DummyWrapper()
-    monkeypatch.setattr("smartapi_wrapper.get_wrapper", lambda: wrapper)
-    import auth
+    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
+    from tradingbot.routers import auth
     monkeypatch.setattr(auth, "get_wrapper", lambda: wrapper)
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
     app = main.app
@@ -31,8 +31,8 @@ def auth_client(monkeypatch):
 @pytest.fixture
 def failing_auth_client(monkeypatch):
     wrapper = FailingWrapper()
-    monkeypatch.setattr("smartapi_wrapper.get_wrapper", lambda: wrapper)
-    import auth
+    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
+    from tradingbot.routers import auth
     monkeypatch.setattr(auth, "get_wrapper", lambda: wrapper)
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
     app = main.app

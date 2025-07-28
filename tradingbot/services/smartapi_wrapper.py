@@ -8,7 +8,7 @@ from google.cloud import storage
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketOrderUpdate import SmartWebSocketOrderUpdate
 
-from redis_client import update_position
+from tradingbot.services.redis_client import update_position
 
 logger = logging.getLogger(__name__)
 
