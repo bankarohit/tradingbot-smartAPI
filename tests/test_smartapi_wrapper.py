@@ -300,3 +300,18 @@ def test_stop_websocket_clears_state(monkeypatch):
     assert ws.closed
     assert wrapper.websocket is None
     assert wrapper.ws_thread is None
+
+
+def test_start_websocket_login_failure(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(smartapi_wrapper, 'Thread', DummyThread)
+    monkeypatch.setattr(wrapper, 'login', lambda: {'error': 'fail'})
+    called = {}
+    monkeypatch.setattr(wrapper, '_run_ws', lambda cb: called.setdefault('run', True))
+
+    with caplog.at_level(logging.ERROR):
+        wrapper.start_websocket(lambda x: None)
+
+    assert 'run' not in called
+    assert wrapper.ws_thread is None
+    assert any('Login failed' in r.message for r in caplog.records)

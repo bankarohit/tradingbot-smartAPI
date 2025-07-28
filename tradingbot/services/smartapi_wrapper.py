@@ -121,7 +121,13 @@ class SmartAPIWrapper:
 
     def start_websocket(self, on_update: Callable[[str], None]) -> None:
         if not self.smart or not self.session:
-            self.login()
+            login_res = self.login()
+            if not self.smart or not self.session:
+                if isinstance(login_res, dict) and "error" in login_res:
+                    logger.error("Login failed: %s", login_res["error"])
+                else:
+                    logger.error("SmartAPI session not established")
+                return
         if self.ws_thread and self.ws_thread.is_alive():
             return
         self.ws_thread = Thread(target=self._run_ws, args=(on_update,), daemon=True)
