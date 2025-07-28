@@ -10,3 +10,4 @@ websocket-client
 pytest
 httpx<0.25
 pytest-cov
+pyotp

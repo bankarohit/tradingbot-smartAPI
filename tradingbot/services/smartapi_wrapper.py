@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 from google.cloud import storage
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketOrderUpdate import SmartWebSocketOrderUpdate
+import pyotp
 
 from tradingbot.services.redis_client import update_position
 
@@ -20,7 +21,7 @@ class SmartAPIWrapper:
         self.api_key = os.getenv("SMARTAPI_API_KEY")
         self.client_code = os.getenv("SMARTAPI_CLIENT_CODE")
         self.password = os.getenv("SMARTAPI_PASSWORD")
-        self.totp = os.getenv("SMARTAPI_TOTP")
+        self.totp_secret = os.getenv("SMARTAPI_TOTP")
         self.gcs_bucket_name = os.getenv("GCS_BUCKET")
         self.token_file = "smartapi_token.json"
         self.smart: Optional[SmartConnect] = None
@@ -68,7 +69,7 @@ class SmartAPIWrapper:
                 return token
 
             session = self.smart.generateSession(
-                self.client_code, self.password, self.totp
+                self.client_code, self.password, pyotp.TOTP(totp_secret).now()
             )
             self.session = session
             try:
