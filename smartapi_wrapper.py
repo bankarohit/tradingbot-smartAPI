@@ -92,7 +92,15 @@ class SmartAPIWrapper:
     # Orders
     def place_order(self, params: Dict[str, Any]) -> Any:
         if not self.smart or not self.session:
-            self.login()
+            login_res = self.login()
+            if isinstance(login_res, dict) and "error" in login_res:
+                logger.error("Login failed: %s", login_res["error"])
+                return login_res
+
+        if not self.smart or not self.session:
+            logger.error("SmartAPI session not established")
+            return {"error": "login failed"}
+
         try:
             resp = self.smart.placeOrder(params)
         except Exception as exc:

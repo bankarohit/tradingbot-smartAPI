@@ -140,6 +140,17 @@ def test_login_returns_error_on_smartconnect_failure(monkeypatch, caplog):
     assert any("Failed to login to SmartAPI" in r.message for r in caplog.records)
 
 
+def test_place_order_returns_login_error(monkeypatch, caplog):
+    wrapper = smartapi_wrapper.SmartAPIWrapper()
+    monkeypatch.setattr(wrapper, "login", lambda: {"error": "bad"})
+
+    with caplog.at_level(logging.ERROR):
+        resp = wrapper.place_order({"k": "v"})
+
+    assert resp == {"error": "bad"}
+    assert any("Login failed" in r.message for r in caplog.records)
+
+
 def test_default_update_handler_buy_and_sell(monkeypatch):
     wrapper = smartapi_wrapper.SmartAPIWrapper()
     calls = []
