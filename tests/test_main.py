@@ -1,7 +1,7 @@
 import asyncio
 import logging
-import main
-import smartapi_wrapper
+import tradingbot.main as main
+from tradingbot.services import smartapi_wrapper
 
 class FailingWrapper:
     def __init__(self):

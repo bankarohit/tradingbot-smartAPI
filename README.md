@@ -41,7 +41,7 @@ Copy `.env.example` to `.env` and set the following environment variables:
 Start the FastAPI app. The WebSocket order update listener will automatically run on startup.
 
 ```bash
-uvicorn main:app --reload
+uvicorn tradingbot.main:app --reload
 ```
 
 Endpoints:
@@ -80,13 +80,13 @@ Example limit order:
 
 ## Module Overview
 
-- `main.py` – FastAPI application and startup hook that begins the WebSocket listener.
-- `auth.py` – `/auth` routes for logging into and out of SmartAPI.
-- `webhook.py` – accepts TradingView webhooks and places orders.
-- `orders.py` – converts TradingView payloads to SmartAPI parameters.
-- `smartapi_wrapper.py` – handles authentication, token storage and the WebSocket connection.
-- `redis_client.py` – helpers for storing open positions in Redis.
-- `logging_config.py` – configures JSON logging.
+- `tradingbot/main.py` – FastAPI application and startup hook that begins the WebSocket listener.
+- `tradingbot/routers/auth.py` – `/auth` routes for logging into and out of SmartAPI.
+- `tradingbot/routers/webhook.py` – accepts TradingView webhooks and places orders.
+- `tradingbot/services/orders.py` – converts TradingView payloads to SmartAPI parameters.
+- `tradingbot/services/smartapi_wrapper.py` – handles authentication, token storage and the WebSocket connection.
+- `tradingbot/services/redis_client.py` – helpers for storing open positions in Redis.
+- `tradingbot/utils/logging_config.py` – configures JSON logging.
 
 ## Deploying to GCP
 
@@ -117,7 +117,7 @@ pytest
 The listener runs automatically when the FastAPI app starts. To run it separately:
 
 ```python
-from smartapi_wrapper import get_wrapper
+from tradingbot.services.smartapi_wrapper import get_wrapper
 wrapper = get_wrapper()
 wrapper.start_websocket(wrapper.default_update_handler)
 ```

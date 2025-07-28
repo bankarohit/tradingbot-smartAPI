@@ -1,7 +1,7 @@
 import logging
 import pytest
 
-import smartapi_wrapper
+from tradingbot.services import smartapi_wrapper
 
 
 class DummySmart:
@@ -154,7 +154,7 @@ def test_place_order_returns_login_error(monkeypatch, caplog):
 def test_default_update_handler_buy_and_sell(monkeypatch):
     wrapper = smartapi_wrapper.SmartAPIWrapper()
     calls = []
-    monkeypatch.setattr('smartapi_wrapper.update_position', lambda sym, qty: calls.append((sym, qty)))
+    monkeypatch.setattr('tradingbot.services.smartapi_wrapper.update_position', lambda sym, qty: calls.append((sym, qty)))
 
     buy_msg = '{"tradingsymbol":"SBIN-EQ","quantity":"2","transactiontype":"BUY"}'
     sell_msg = '{"tradingsymbol":"SBIN-EQ","quantity":"1","transactiontype":"SELL"}'
@@ -167,7 +167,7 @@ def test_default_update_handler_buy_and_sell(monkeypatch):
 
 def test_default_update_handler_error_logged(monkeypatch, caplog):
     wrapper = smartapi_wrapper.SmartAPIWrapper()
-    monkeypatch.setattr('smartapi_wrapper.update_position', lambda *a, **k: 1)
+    monkeypatch.setattr('tradingbot.services.smartapi_wrapper.update_position', lambda *a, **k: 1)
 
     with caplog.at_level(logging.ERROR):
         wrapper.default_update_handler("not json")

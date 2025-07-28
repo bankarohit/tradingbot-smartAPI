@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 import logging
 
-from smartapi_wrapper import get_wrapper
+from tradingbot.services.smartapi_wrapper import get_wrapper
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

@@ -18,4 +18,4 @@ ENV REDIS_HOST="localhost"
 ENV REDIS_PORT="6379"
 ENV REDIS_DB="0"
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "tradingbot.main:app", "--host", "0.0.0.0", "--port", "8080"]

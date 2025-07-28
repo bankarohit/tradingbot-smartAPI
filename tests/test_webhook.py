@@ -2,7 +2,7 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
-import main
+import tradingbot.main as main
 
 class DummyWrapper:
     def __init__(self):
@@ -28,9 +28,9 @@ class FailingWrapper(DummyWrapper):
 @pytest.fixture
 def client(monkeypatch):
     wrapper = DummyWrapper()
-    monkeypatch.setattr("smartapi_wrapper.get_wrapper", lambda: wrapper)
+    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
-    import webhook
+    from tradingbot.routers import webhook
     monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
     app = main.app
     return TestClient(app)
@@ -39,9 +39,9 @@ def client(monkeypatch):
 @pytest.fixture
 def failing_client(monkeypatch):
     wrapper = FailingWrapper()
-    monkeypatch.setattr("smartapi_wrapper.get_wrapper", lambda: wrapper)
+    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
-    import webhook
+    from tradingbot.routers import webhook
     monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
     app = main.app
     return TestClient(app)

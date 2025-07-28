@@ -3,10 +3,10 @@ import asyncio
 
 from fastapi import FastAPI
 
-import logging_config
-from auth import router as auth_router
-from smartapi_wrapper import get_wrapper
-from webhook import router as webhook_router
+from tradingbot.utils import logging_config
+from tradingbot.routers.auth import router as auth_router
+from tradingbot.services.smartapi_wrapper import get_wrapper
+from tradingbot.routers.webhook import router as webhook_router
 
 logging_config.setup_logging()
 
