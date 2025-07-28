@@ -23,4 +23,7 @@ async def tradingview_webhook(payload: Request):
     except Exception as exc:
         logger.exception("Failed to place order: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc))
+    if isinstance(resp, dict) and "error" in resp:
+        logger.error("Order error: %s", resp["error"])
+        raise HTTPException(status_code=502, detail=resp["error"])
     return {"status": "order_sent", "response": resp}

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 import tradingbot.main as main
 
+
 class DummyWrapper:
     def __init__(self):
         self.placed = None
@@ -25,12 +26,20 @@ class FailingWrapper(DummyWrapper):
         raise Exception("boom")
 
 
+class ErrorWrapper(DummyWrapper):
+    def place_order(self, params):
+        return {"error": "bad"}
+
+
 @pytest.fixture
 def client(monkeypatch):
     wrapper = DummyWrapper()
-    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
+    monkeypatch.setattr(
+        "tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper
+    )
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
     from tradingbot.routers import webhook
+
     monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
     app = main.app
     return TestClient(app)
@@ -39,16 +48,35 @@ def client(monkeypatch):
 @pytest.fixture
 def failing_client(monkeypatch):
     wrapper = FailingWrapper()
-    monkeypatch.setattr("tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper)
+    monkeypatch.setattr(
+        "tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper
+    )
     monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
     from tradingbot.routers import webhook
+
+    monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
+    app = main.app
+    return TestClient(app)
+
+
+@pytest.fixture
+def error_client(monkeypatch):
+    wrapper = ErrorWrapper()
+    monkeypatch.setattr(
+        "tradingbot.services.smartapi_wrapper.get_wrapper", lambda: wrapper
+    )
+    monkeypatch.setattr(main, "get_wrapper", lambda: wrapper)
+    from tradingbot.routers import webhook
+
     monkeypatch.setattr(webhook, "get_wrapper", lambda: wrapper)
     app = main.app
     return TestClient(app)
 
 
 def test_webhook_invalid_json(client):
-    response = client.post("/webhook", data="notjson", headers={"Content-Type": "application/json"})
+    response = client.post(
+        "/webhook", data="notjson", headers={"Content-Type": "application/json"}
+    )
     assert response.status_code == 400
 
 
@@ -80,3 +108,10 @@ def test_webhook_order_failure(failing_client, caplog):
     assert response.status_code == 502
     assert any("Failed to place order" in r.message for r in caplog.records)
 
+
+def test_webhook_order_error_dict(error_client, caplog):
+    payload = {"symbol": "SBIN-EQ", "qty": 1}
+    with caplog.at_level(logging.ERROR):
+        response = error_client.post("/webhook", json=payload)
+    assert response.status_code == 502
+    assert any("Order error" in r.message for r in caplog.records)
